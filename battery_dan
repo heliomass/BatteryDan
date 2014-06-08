@@ -1,0 +1,149 @@
+#!/bin/bash
+#
+# BatteryDan v1.0
+# By Daniel Demby
+# heliomass@gmail.com
+# http://heliomass.com
+#
+# Feel free to modify and improve this script. Drop me an email if you do anything cool with it :)
+#
+
+# Don't change these!
+export VERSION='1.0'; # Script version
+
+# Default the command arguments
+export ROUND_UP=0;    # If set to 1, when the Mac has a power supply and the power is above 95%, round it up to 100%.
+
+# Help
+function display_help() {
+
+	echo ''
+	echo "BatteryDan v${VERSION}"
+	echo ''
+	echo "--round_up"
+	echo "   With some Macs, the battery never truly charges to 100%. Use this switch"
+	echo "   to force the display to show 100% charged when you're plugged in and"
+	echo "   the battery is above 95%."
+	echo ''
+
+}
+
+# Parse command arguments
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--round_up)
+			ROUND_UP=1
+			shift
+			;;
+		--help|-h|-?)
+			display_help
+			exit 0
+			;;
+		*)
+			echo "Unrecognised paramter ${1}. Please use the --help switch to see usage." >&2
+			exit 1
+			;;
+	esac
+done
+
+# Dependencies
+function check_deps() {
+
+	local __missing_dep=0
+
+	if [ $(uname) != 'Darwin' ]; then
+		echo 'This script will only work under OS X.' >&2
+		__missing_dep=1
+	fi
+	if [ -z "$(pmset)" ]; then
+		echo 'Missing pmset.' >&2
+		__missing_dep=1
+	fi
+
+	return $__missing_dep
+
+}
+
+# Extract useful battery statistics
+function populate_battery_data() {
+
+	# Return varibles
+	local __battery_source_rtn=$1
+	local __battery_percentage_rtn=$2
+	local __battery_estimate_rtn=$3
+
+	# Local variables, which will store the
+	# battery info we're interested in.
+	local __battery_source
+	local __battery_percentage
+	local __battery_estimate
+
+	# Query the battery status
+	local __overall_status=$(pmset -g batt)
+
+	# Now, extract the individual bits of information by abusing sed
+	# (sorry, I could have used perl I suppose, but meh...)
+	__battery_source=$(echo $__overall_status | sed "s_'_#_" | sed "s_^.*#__" | sed "s_'.*__")
+	__battery_percentage=$(echo $__overall_status | sed "s_.*'__" | awk {'print $2'})
+	__battery_estimate=$(echo $__overall_status | sed "s_.*'__" | awk {'print $4'})
+
+	# If there's not estimate available for the time until charged,
+	# use a dummy placeholder.
+	if [ "$__battery_estimate" == "(no" ]; then
+		__battery_estimate='?:??'
+	fi
+
+	# Get rid of the % marker on the battery level
+	__battery_percentage=$(echo $__battery_percentage | sed 's_%;$__')
+
+	if [ -z "$__battery_percentage" ]; then
+		# If this device doesn't have a battery, display 100%
+		__battery_percentage='100'
+	elif [ $ROUND_UP -eq 1 -a $__battery_percentage -gt 95 -a "$__battery_source" != "Battery Power" ]; then
+		# If the --round_up switch was supplied,
+		# then round up to 100% if the conditions are right.
+		__battery_percentage='100'
+	fi
+
+	# Return our data
+	eval $__battery_source_rtn="'$__battery_source'"
+	eval $__battery_percentage_rtn="'$__battery_percentage'"
+	eval $__battery_estimate_rtn="'$__battery_estimate'"
+
+	return 0
+
+}
+
+# Show a charging icon and the battery percentage.
+function prettify_battery_source() {
+
+	# Input argument
+	local __battery_source=$1
+
+	# Local procedure arguments
+	local __battery_image=
+
+	# Return arguments
+	local __battery_image_rtn=$2
+
+	case "$__battery_source" in
+		'AC Power')      __battery_image='◉';; # AC Power
+		'Battery Power') __battery_image='◎';; # Battery
+		*)               __battery_image='?';; # Unknown battery status
+	esac
+
+	eval $__battery_image_rtn="'$__battery_image'"
+
+}
+
+check_deps
+if [ $? -ne 0 ]; then
+	echo 'Please install missing dependencies.' >&2
+	exit 1
+fi
+
+# Display the battery info
+populate_battery_data battery_source battery_percentage battery_estimate
+prettify_battery_source "$battery_source" battery_icon
+echo -n "${battery_icon} ${battery_percentage}%"
+exit 0
