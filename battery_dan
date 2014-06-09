@@ -55,7 +55,7 @@ function check_deps() {
 		echo 'This script will only work under OS X.' >&2
 		__missing_dep=1
 	fi
-	if [ -z "$(pmset)" ]; then
+	if [ -z "$(which pmset)" ]; then
 		echo 'Missing pmset.' >&2
 		__missing_dep=1
 	fi
