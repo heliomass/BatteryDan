@@ -7,6 +7,13 @@
 #
 # Feel free to modify and improve this script. Drop me an email if you do anything cool with it :)
 #
+# Exit statuses:
+#   0 - General success (eg: when running with --help)
+#   1 - General failure (error message is given)
+#   10 - Battery fully charged
+#   11 - Battery on AC and charging
+#   12 - Battery draining
+#   20 - Unknown battery status
 
 # Don't change these!
 export VERSION='1.0'; # Script version
@@ -136,6 +143,23 @@ function prettify_battery_source() {
 
 }
 
+# Return a status code we can use to exit on.
+function get_status_code() {
+
+	local __battery_source=$1
+	local __battery_percentage=$2
+	local __status_code=20
+
+	if [ "$__battery_source" == "AC Power" -a $battery_percentage -eq 100 ]; then
+		__status_code=10; # On AC and fully charged
+	elif [ "$__battery_source" == "AC Power" ]; then
+		__status_code=11; # On AC and charging
+	elif [ "$__battery_source" == "Battery Power" ]; then
+		__status_code=12; # Battery draining
+	fi
+
+}
+
 check_deps
 if [ $? -ne 0 ]; then
 	echo 'Please install missing dependencies.' >&2
@@ -146,4 +170,5 @@ fi
 populate_battery_data battery_source battery_percentage battery_estimate
 prettify_battery_source "$battery_source" battery_icon
 echo -n "${battery_icon} ${battery_percentage}%"
-exit 0
+get_status_code "$battery_source" $battery_percentage
+exit $?
