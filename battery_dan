@@ -158,6 +158,8 @@ function get_status_code() {
 		__status_code=12; # Battery draining
 	fi
 
+	return $__status_code
+
 }
 
 check_deps
