@@ -1,5 +1,4 @@
 ![](logo.png)
-
 BatteryDan v1.0
 
 By Daniel Demby
