@@ -91,7 +91,8 @@ function populate_battery_data() {
 	# Now, extract the individual bits of information by abusing sed
 	# (sorry, I could have used perl I suppose, but meh...)
 	__battery_source=$(echo $__overall_status | sed "s_'_#_" | sed "s_^.*#__" | sed "s_'.*__")
-	__battery_percentage=$(echo $__overall_status | sed "s_.*'__" | awk {'print $2'})
+	# The below taken from: http://www.commandlinefu.com/commands/view/10477/get-osx-battery-percentage
+	__battery_percentage=$(echo $__overall_status | egrep "([0-9]+\%).*" -o --colour=auto | cut -f1 -d';' | cut -f1 -d'%');
 	__battery_estimate=$(echo $__overall_status | sed "s_.*'__" | awk {'print $4'})
 
 	# If there's not estimate available for the time until charged,
